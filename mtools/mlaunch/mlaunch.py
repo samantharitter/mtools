@@ -41,27 +41,45 @@ def wait_for_host(port, interval=1, timeout=30, to_start=True, queue=None):
     host = 'localhost:%i'%port
     startTime = time.time()
     while True:
+        
+        print "while loop, running for %s sec" % (time.time() - startTime)
+
         if (time.time() - startTime) > timeout:
+            print "timeout reached"
             if queue:
-                queue.put((port, False))
+                print "put False in queue"
+                queue.put_nowait((port, False))
+                print "put done"
             return False
         try:
+            print "trying to connect"
             # make connection and ping host
             con = Connection(host)
+            print "connected, now trying to ping"
             con.admin.command('ping')
             if to_start:
                 if queue:
-                    queue.put((port, True))
+                    print "put True in queue"
+                    queue.put_nowait((port, True))
+                    print "put done"
                 return True
             else:
+                print "sleep more"
                 time.sleep(interval)
-        except (ConnectionFailure, AutoReconnect) as e:
+        except Exception as e:
+            print "raise Exception %s" % e
             if to_start:
+                print "sleep more"
                 time.sleep(interval)
             else:
                 if queue:
-                    queue.put((port, True))
+                    print "put True in queue"
+                    queue.put_nowait((port, True))
+                    print "put done"
                 return True
+        except: 
+            print sys.exc_info()
+            raise SystemExit
 
 
 
@@ -770,7 +788,7 @@ class MLaunchTool(BaseCmdLineTool):
         return sorted([tag for tag in self.cluster_tags if port in self.cluster_tags[tag] ])
 
 
-    def wait_for(self, ports, interval=1.0, timeout=30, to_start=True):
+    def wait_for(self, ports, interval=1.0, timeout=5, to_start=True):
         """ Given a list of ports, spawns up threads that will ping the host on each port concurrently. 
             Returns when all hosts are running (if to_start=True) / shut down (if to_start=False)
         """
@@ -780,17 +798,22 @@ class MLaunchTool(BaseCmdLineTool):
         for port in ports:
             threads.append(threading.Thread(target=wait_for_host, args=(port, interval, timeout, to_start, queue)))
 
+        print "wait_for: after thread creation"
+
         if self.args and 'verbose' in self.args and self.args['verbose']:
             print "waiting for nodes %s..." % 'to start' if to_start else 'to shutdown'
         
         for thread in threads:
             thread.start()
 
+        print "wait_for: after start"
+
         for thread in threads:
             thread.join()
 
+        print "wait_for: after join"
         # get all results back and return tuple
-        return tuple(queue.get() for _ in ports)
+        return tuple(queue.get_nowait() for _ in ports)
 
 
     # --- below here are internal helper methods, should not be called externally ---

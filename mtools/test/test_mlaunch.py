@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import inspect
 import shutil
 import socket
@@ -36,38 +38,51 @@ class TestMLaunch(object):
 
     def setup(self):
         """ start up method to create mlaunch tool and find free port """
+        print("setup", file=sys.stderr)
         self.tool = MLaunchTool()
 
         # if the test data path exists, remove it
         if os.path.exists(self.base_dir):
             shutil.rmtree(self.base_dir)
 
+        print("setup done.", file=sys.stderr)
+
 
     def teardown(self):
         """ tear down method after each test, removes data directory """        
-
+        print("teardown", file=sys.stderr)
         # kill all running processes
         self.tool.discover()
 
         ports = self.tool.get_tagged(['all', 'running'])
         processes = self.tool._get_processes().values()
+
+        print("teardown 1")
+
         for p in processes:
             p.kill()
 
+        print("teardown 2")
         self.tool.wait_for(ports, to_start=False)
 
         # quick sleep to avoid spurious test failures
+        print("teardown 3")
         time.sleep(0.1)
 
         # if the test data path exists, remove it
         if os.path.exists(self.base_dir):
             shutil.rmtree(self.base_dir)
 
+        print("teardown done.")
+
 
     def run_tool(self, arg_str):
         """ wrapper to call self.tool.run() with or without auth """
         # name data directory according to test method name
         caller = inspect.stack()[1][3]
+
+        print("run_tool: %s" % caller, file=sys.stderr)
+
         self.data_dir = os.path.join(self.base_dir, caller)
 
         # add data directory to arguments for all commands
@@ -424,7 +439,7 @@ class TestMLaunch(object):
 
         # go through all tags, stop nodes for each tag, confirm only the tagged ones are down, start again
         for tag in tags:
-            print "---------", tag
+            print("---------", tag)
             self.run_tool("kill %s" % tag)
             assert self.tool.get_tagged('down') == self.tool.get_tagged(tag)
             time.sleep(1)
@@ -500,7 +515,6 @@ class TestMLaunch(object):
             self.run_tool("start")
 
     
-    @raises(SystemExit)
     def test_init_init_replicaset(self):
         """ mlaunch: test calling init a second time on the replica set """
 
@@ -509,9 +523,6 @@ class TestMLaunch(object):
 
         # now stop and init again, this should work if everything is stopped and identical environment
         self.run_tool("stop")
-        self.run_tool("init --replicaset")
-
-        # but another init should fail with a SystemExit
         self.run_tool("init --replicaset")
 
 
@@ -611,7 +622,6 @@ class TestMLaunch(object):
 
         # check if the user roles are correctly set to the specified roles
         user = mc.admin.system.users.find_one()
-        print user
         assert set(user['roles']) == set(["dbAdminAnyDatabase", "readWriteAnyDatabase", "userAdminAnyDatabase"])
         assert user['user'] == 'corben'
 
