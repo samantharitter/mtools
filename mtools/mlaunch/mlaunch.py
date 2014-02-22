@@ -305,8 +305,8 @@ class MLaunchTool(BaseCmdLineTool):
                         if res['ok']:
                             if self.args['verbose']:
                                 print "shard %s added successfully"%conn_str
-                                self.shard_connection_str.remove(conn_str)
-                                break
+                            self.shard_connection_str.remove(conn_str)
+                            break
                         else:
                             if self.args['verbose']:
                                 print res, '- will retry'
